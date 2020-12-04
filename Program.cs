@@ -81,11 +81,11 @@ namespace Indicator
 
             //Create menu items
             infoButton     = new MenuItem("Indicator v" + versionNumber + " by Ben Hawthorn", infoButton_Click);
-            capsCheckbox   = new MenuItem("Caps lock indicator",            capsCheckbox_Click);   capsCheckbox.Checked   = capsOn;
-            numCheckbox    = new MenuItem("Num lock indicator",             numCheckbox_Click);    numCheckbox.Checked    = numOn;
-            scrollCheckbox = new MenuItem("Scroll lock indicator",          scrollCheckbox_Click); scrollCheckbox.Checked = scrollOn;
-            hddCheckbox    = new MenuItem("Hard drive activity indicator",  hddCheckbox_Click);    hddCheckbox.Checked    = hddOn;
-            quitButton     = new MenuItem("Quit",                           quitButton_Click);
+            capsCheckbox   = new MenuItem("Caps lock indicator",           capsCheckbox_Click);   capsCheckbox.Checked   = capsOn;
+            numCheckbox    = new MenuItem("Num lock indicator",            numCheckbox_Click);    numCheckbox.Checked    = numOn;
+            scrollCheckbox = new MenuItem("Scroll lock indicator",         scrollCheckbox_Click); scrollCheckbox.Checked = scrollOn;
+            hddCheckbox    = new MenuItem("Hard drive activity indicator", hddCheckbox_Click);    hddCheckbox.Checked    = hddOn;
+            quitButton     = new MenuItem("Quit",                          quitButton_Click);
 
             //Add menu items to context menu
             ContextMenu contextMenu = new ContextMenu();
