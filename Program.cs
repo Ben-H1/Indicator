@@ -18,7 +18,7 @@ namespace Indicator
 {
     public partial class Program : Form
     {
-        static string versionNumber = "1.0";
+        static string versionNumber = "1.01";
         static string settingsPath = "config.txt";
 
         static bool capsOn;
@@ -68,10 +68,10 @@ namespace Indicator
             capsOnIcon    = new Icon("images/ico/capsOn.ico");
             numOffIcon    = new Icon("images/ico/numOff.ico");
             numOnIcon     = new Icon("images/ico/numOn.ico");
-            scrollOffIcon = new Icon("images/ico/scrollOff.ico");
-            scrollOnIcon  = new Icon("images/ico/scrollOn.ico");
-            hddOffIcon    = new Icon("images/ico/hddOff.ico");
-            hddOnIcon     = new Icon("images/ico/hddOn.ico");
+            scrollOffIcon = new Icon("images/ico/scrollOff2.ico");
+            scrollOnIcon  = new Icon("images/ico/scrollOn2.ico");
+            hddOffIcon    = new Icon("images/ico/hddOff2.ico");
+            hddOnIcon     = new Icon("images/ico/hddOn2.ico");
 
             //Set icon images
             capsIcon.Icon   = capsOffIcon;
