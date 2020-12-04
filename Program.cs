@@ -18,7 +18,7 @@ namespace Indicator
 {
     public partial class Program : Form
     {
-        static string versionNumber = "1.3";
+        static string versionNumber = "1.0";
         static string settingsPath = "config.txt";
 
         static bool capsOn;
