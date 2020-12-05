@@ -57,8 +57,6 @@ namespace Indicator
         {
             getSettings();
 
-            //TrayIcon trayIcon = new TrayIcon("images/ico/capsOff.ico", "images/ico/capsOn.ico");
-
             //Create tray icons
             capsIcon   = new NotifyIcon();
             numIcon    = new NotifyIcon();
@@ -103,18 +101,18 @@ namespace Indicator
             numIcon.ContextMenu    = contextMenu;
             scrollIcon.ContextMenu = contextMenu;
             hddIcon.ContextMenu    = contextMenu;
-            
-            //Make icons visible based on settings
-            capsIcon.Visible   = capsOn;
-            numIcon.Visible    = numOn;
-            scrollIcon.Visible = scrollOn;
-            hddIcon.Visible    = hddOn;
 
+            //Make icons visible based on settings
+            hddIcon.Visible    = hddOn;
+            scrollIcon.Visible = scrollOn;
+            numIcon.Visible    = numOn;
+            capsIcon.Visible   = capsOn;
+            
             //Create threads
-            capsWorker   = new Thread(() => LockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
-            numWorker    = new Thread(() => LockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
-            scrollWorker = new Thread(() => LockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
-            hddWorker    = new Thread(() => DriveThread(hddIcon, hddOffIcon, hddOnIcon));
+            capsWorker   = new Thread(() => lockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
+            numWorker    = new Thread(() => lockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
+            scrollWorker = new Thread(() => lockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
+            hddWorker    = new Thread(() => driveThread(hddIcon, hddOffIcon, hddOnIcon));
 
             //Start threads based on settings
             if (capsOn) {
@@ -261,22 +259,22 @@ namespace Indicator
             //Check which thread to start and start it
             switch (thread) {
                 case "caps":
-                    capsWorker = new Thread(() => LockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
+                    capsWorker = new Thread(() => lockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
                     capsWorker.Start();
                     break;
 
                 case "num":
-                    numWorker = new Thread(() => LockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
+                    numWorker = new Thread(() => lockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
                     numWorker.Start();
                     break;
 
                 case "scroll":
-                    scrollWorker = new Thread(() => LockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
+                    scrollWorker = new Thread(() => lockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
                     scrollWorker.Start();
                     break;
 
                 case "hdd":
-                    hddWorker = new Thread(() => DriveThread(hddIcon, hddOffIcon, hddOnIcon));
+                    hddWorker = new Thread(() => driveThread(hddIcon, hddOffIcon, hddOnIcon));
                     hddWorker.Start();
                     break;
             }
@@ -287,7 +285,7 @@ namespace Indicator
             ConfigurationManager.AppSettings.Add(key, value); //Change the value of the key in the config file
         }
 
-        private static void LockThread(Keys key, NotifyIcon icon, Icon offIcon, Icon onIcon)
+        private static void lockThread(Keys key, NotifyIcon icon, Icon offIcon, Icon onIcon)
         {
             try {
                 while (true) {
@@ -305,7 +303,7 @@ namespace Indicator
             }
         }
 
-        private static void DriveThread(NotifyIcon icon, Icon offIcon, Icon onIcon)
+        private static void driveThread(NotifyIcon icon, Icon offIcon, Icon onIcon)
         {
             ManagementClass driveDataClass = new ManagementClass("Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
 
