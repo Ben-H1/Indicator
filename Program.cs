@@ -57,6 +57,8 @@ namespace Indicator
         {
             getSettings();
 
+            //TrayIcon trayIcon = new TrayIcon("images/ico/capsOff.ico", "images/ico/capsOn.ico");
+
             //Create tray icons
             capsIcon   = new NotifyIcon();
             numIcon    = new NotifyIcon();
@@ -163,10 +165,10 @@ namespace Indicator
         private static void setSettings()
         {
             using (StreamWriter sw = File.CreateText(settingsPath)) {
-                sw.WriteLine(capsCheckbox.Checked ? "1" : "0");
-                sw.WriteLine(numCheckbox.Checked ? "1" : "0");
+                sw.WriteLine(capsCheckbox.Checked   ? "1" : "0");
+                sw.WriteLine(numCheckbox.Checked    ? "1" : "0");
                 sw.WriteLine(scrollCheckbox.Checked ? "1" : "0");
-                sw.WriteLine(hddCheckbox.Checked ? "1" : "0");
+                sw.WriteLine(hddCheckbox.Checked    ? "1" : "0");
                 sw.WriteLine(waitTime);
             }
         }
