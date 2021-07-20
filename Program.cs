@@ -18,314 +18,258 @@ namespace Indicator
 {
     public partial class Program : Form
     {
-        static string versionNumber = "1.01";
-        static string settingsPath = "config.txt";
+        static string versionNumber = "2.0";
+        static string settingsPath  = "config.cfg";
 
-        static bool capsOn;
-        static bool numOn;
-        static bool scrollOn;
-        static bool hddOn;
-        static int waitTime;
+        static char settingsDelimiter = ':';
+        static char settingsComment   = '#';
 
-        static NotifyIcon capsIcon;
-        static NotifyIcon numIcon;
-        static NotifyIcon scrollIcon;
-        static NotifyIcon hddIcon;
+        static Dictionary<string, string> settings = new Dictionary<string, string>();
 
-        static Icon capsOffIcon;
-        static Icon capsOnIcon;
-        static Icon numOffIcon;
-        static Icon numOnIcon;
-        static Icon scrollOffIcon;
-        static Icon scrollOnIcon;
-        static Icon hddOffIcon;
-        static Icon hddOnIcon;
+        static int maxHdd = 26;
 
-        static MenuItem infoButton;
-        static MenuItem capsCheckbox;
-        static MenuItem numCheckbox;
-        static MenuItem scrollCheckbox;
-        static MenuItem hddCheckbox;
-        static MenuItem quitButton;
+        // Icons
+        static IconThread   capsIcon    ;
+        static IconThread   numIcon     ;
+        static IconThread   scrollIcon  ;
+        static IconThread   totalHddIcon;
+        static IconThread[] hddIcons = new IconThread[maxHdd];
 
-        static Thread capsWorker;
-        static Thread numWorker;
-        static Thread scrollWorker;
-        static Thread hddWorker;
+        // Context menu items
+        static MenuItem infoButton    ;
+        static MenuItem settingsButton;
+        static MenuItem quitButton    ;
+
+        // Forms
+        static InfoForm     infoForm    ;
+        static SettingsForm settingsForm;
+
+        // Context menu
+        static ContextMenu contextMenu;
 
         private static void Main(string[] args)
         {
-            getSettings();
+            // Enable form styles
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
 
-            //Create tray icons
-            capsIcon   = new NotifyIcon();
-            numIcon    = new NotifyIcon();
-            scrollIcon = new NotifyIcon();
-            hddIcon    = new NotifyIcon();
+            loadSettings();
 
-            //Get icon images
-            capsOffIcon   = new Icon("images/ico/capsOff.ico");
-            capsOnIcon    = new Icon("images/ico/capsOn.ico");
-            numOffIcon    = new Icon("images/ico/numOff.ico");
-            numOnIcon     = new Icon("images/ico/numOn.ico");
-            scrollOffIcon = new Icon("images/ico/scrollOff2.ico");
-            scrollOnIcon  = new Icon("images/ico/scrollOn2.ico");
-            hddOffIcon    = new Icon("images/ico/hddOff2.ico");
-            hddOnIcon     = new Icon("images/ico/hddOn2.ico");
+            // Initiate forms
+            infoForm     = new InfoForm(versionNumber);
+            settingsForm = new SettingsForm(settings);
 
-            //Set icon images
-            capsIcon.Icon   = capsOffIcon;
-            numIcon.Icon    = numOffIcon;
-            scrollIcon.Icon = scrollOffIcon;
-            hddIcon.Icon    = hddOffIcon;
+            // Initiate icons and context menu items
+            initiateIconThreads();
+            initiateContextMenu();
 
-            //Create menu items
-            infoButton     = new MenuItem("Indicator v" + versionNumber + " by Ben Hawthorn", infoButton_Click);
-            capsCheckbox   = new MenuItem("Caps lock indicator",           capsCheckbox_Click);   capsCheckbox.Checked   = capsOn;
-            numCheckbox    = new MenuItem("Num lock indicator",            numCheckbox_Click);    numCheckbox.Checked    = numOn;
-            scrollCheckbox = new MenuItem("Scroll lock indicator",         scrollCheckbox_Click); scrollCheckbox.Checked = scrollOn;
-            hddCheckbox    = new MenuItem("Hard drive activity indicator", hddCheckbox_Click);    hddCheckbox.Checked    = hddOn;
-            quitButton     = new MenuItem("Quit",                          quitButton_Click);
-
-            //Add menu items to context menu
-            ContextMenu contextMenu = new ContextMenu();
-            contextMenu.MenuItems.Add(infoButton);
-            contextMenu.MenuItems.Add(capsCheckbox);
-            contextMenu.MenuItems.Add(numCheckbox);
-            contextMenu.MenuItems.Add(scrollCheckbox);
-            contextMenu.MenuItems.Add(hddCheckbox);
-            contextMenu.MenuItems.Add(quitButton);
-
-            //Add context menu to all icons
-            capsIcon.ContextMenu   = contextMenu;
-            numIcon.ContextMenu    = contextMenu;
-            scrollIcon.ContextMenu = contextMenu;
-            hddIcon.ContextMenu    = contextMenu;
-
-            //Make icons visible based on settings
-            hddIcon.Visible    = hddOn;
-            scrollIcon.Visible = scrollOn;
-            numIcon.Visible    = numOn;
-            capsIcon.Visible   = capsOn;
-            
-            //Create threads
-            capsWorker   = new Thread(() => lockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
-            numWorker    = new Thread(() => lockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
-            scrollWorker = new Thread(() => lockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
-            hddWorker    = new Thread(() => driveThread(hddIcon, hddOffIcon, hddOnIcon));
-
-            //Start threads based on settings
-            if (capsOn) {
-                capsWorker.Start();
-            } if (numOn) {
-                numWorker.Start();
-            } if (scrollOn) {
-                scrollWorker.Start();
-            } if (hddOn) {
-                hddWorker.Start();
-            }
-            
-            //Run the application
+            // Run the program
             Application.Run();
         }
-
-        private static void getSettings()
+        
+        private static void loadSettings()
         {
-            //If settings file doesn't exist, create it
-            if (!File.Exists(settingsPath)) {
-                using (StreamWriter sw = File.CreateText(settingsPath)) {
-                    sw.WriteLine("1");
-                    sw.WriteLine("1");
-                    sw.WriteLine("1");
-                    sw.WriteLine("1");
-                    sw.WriteLine("100");
-                }
-            }
+            bool invalid = false;
 
-            int[] settings = new int[5];
-
-            using (StreamReader sr = File.OpenText(settingsPath)) {
-                string line = "";
-                int i = 0;
-                while ((line = sr.ReadLine()) != null) {
-                    settings[i] = Int32.Parse(line);
-                    i++;
-                }
-            }
-
-            capsOn   = Convert.ToBoolean(settings[0]);
-            numOn    = Convert.ToBoolean(settings[1]);
-            scrollOn = Convert.ToBoolean(settings[2]);
-            hddOn    = Convert.ToBoolean(settings[3]);
-            waitTime = settings[4];
-        }
-
-        private static void setSettings()
-        {
-            using (StreamWriter sw = File.CreateText(settingsPath)) {
-                sw.WriteLine(capsCheckbox.Checked   ? "1" : "0");
-                sw.WriteLine(numCheckbox.Checked    ? "1" : "0");
-                sw.WriteLine(scrollCheckbox.Checked ? "1" : "0");
-                sw.WriteLine(hddCheckbox.Checked    ? "1" : "0");
-                sw.WriteLine(waitTime);
-            }
-        }
-
-        private static void infoButton_Click(object sender, System.EventArgs e)
-        {
-            //Show a message box
-            MessageBox.Show("Indicator v" + versionNumber + " by Ben Hawthorn" + "\n\n" + "http://www.github.com/Ben-H1", "Indicator", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private static void quitButton_Click(object sender, System.EventArgs e)
-        {
-            quit();
-        }
-
-        private static void quit()
-        {
-            //Abort any alive threads
-            if (capsWorker.IsAlive) {
-                capsWorker.Abort();
-            } if (numWorker.IsAlive) {
-                numWorker.Abort();
-            } if (scrollWorker.IsAlive) {
-                scrollWorker.Abort();
-            } if (hddWorker.IsAlive) {
-                hddWorker.Abort();
-            }
-
-            //Make all icons invisible
-            capsIcon.Visible   = false;
-            numIcon.Visible    = false;
-            scrollIcon.Visible = false;
-            hddIcon.Visible    = false;
-
-            //Dispose of all icons
-            capsIcon.Dispose();
-            numIcon.Dispose();
-            scrollIcon.Dispose();
-            hddIcon.Dispose();
-
-            //Exit the application
-            Environment.Exit(0);
-        }
-
-        private static void doClick(MenuItem menuItem, NotifyIcon icon, Thread worker, string thread)
-        {
-            if (menuItem.Checked) { //If the item is checked
-                menuItem.Checked = false; //Make it not checked
-                icon.Visible = false; //Make the icon invisible
-                worker.Abort(); //Abort the thread
-                checkAll();
-                setSettings();
-            } else { //If not checked
-                menuItem.Checked = true; //Make it checked
-                icon.Visible = true; //Make the icon visible
-                startThread(thread); //Start the thread
-                setSettings();
-            }
-        }
-
-        private static void checkAll()
-        {
-            if (!capsCheckbox.Checked && !numCheckbox.Checked && !scrollCheckbox.Checked && !hddCheckbox.Checked) { //If all menu items are not checked
-                quit();
-            }
-        }
-
-        private static void capsCheckbox_Click(object sender, System.EventArgs e)
-        {
-            doClick(capsCheckbox, capsIcon, capsWorker, "caps");
-        }
-
-        private static void numCheckbox_Click(object sender, System.EventArgs e)
-        {
-            doClick(numCheckbox, numIcon, numWorker, "num");
-        }
-
-        private static void scrollCheckbox_Click(object sender, System.EventArgs e)
-        {
-            doClick(scrollCheckbox, scrollIcon, scrollWorker, "scroll");
-        }
-
-        private static void hddCheckbox_Click(object sender, System.EventArgs e)
-        {
-            doClick(hddCheckbox, hddIcon, hddWorker, "hdd");
-        }
-
-        private static void startThread(string thread)
-        {
-            //Check which thread to start and start it
-            switch (thread) {
-                case "caps":
-                    capsWorker = new Thread(() => lockThread(Keys.CapsLock, capsIcon, capsOffIcon, capsOnIcon));
-                    capsWorker.Start();
-                    break;
-
-                case "num":
-                    numWorker = new Thread(() => lockThread(Keys.NumLock, numIcon, numOffIcon, numOnIcon));
-                    numWorker.Start();
-                    break;
-
-                case "scroll":
-                    scrollWorker = new Thread(() => lockThread(Keys.Scroll, scrollIcon, scrollOffIcon, scrollOnIcon));
-                    scrollWorker.Start();
-                    break;
-
-                case "hdd":
-                    hddWorker = new Thread(() => driveThread(hddIcon, hddOffIcon, hddOnIcon));
-                    hddWorker.Start();
-                    break;
-            }
-        }
-
-        private static void updateSetting(string key, string value)
-        {
-            ConfigurationManager.AppSettings.Add(key, value); //Change the value of the key in the config file
-        }
-
-        private static void lockThread(Keys key, NotifyIcon icon, Icon offIcon, Icon onIcon)
-        {
+            // Read settings from file
             try {
-                while (true) {
-                    //Change the icon based on the lock state
-                    if (!Control.IsKeyLocked(key)) {
-                        icon.Icon = offIcon;
-                    } else {
-                        icon.Icon = onIcon;
-                    }
+                using (StreamReader sr = new StreamReader(settingsPath)) {
+                    string line;
 
-                    Thread.Sleep(waitTime); //Wait
-                }
-            } catch (ThreadAbortException tbe) {
+                    while ((line = sr.ReadLine()) != null) {
+                        if (line != "" && line[0] != settingsComment) {
+                            string[] parts = line.Split(settingsDelimiter);
 
-            }
-        }
+                            string key = parts[0].Trim();
+                            string value = parts[1].Trim();
 
-        private static void driveThread(NotifyIcon icon, Icon offIcon, Icon onIcon)
-        {
-            ManagementClass driveDataClass = new ManagementClass("Win32_PerfFormattedData_PerfDisk_PhysicalDisk");
-
-            try {
-                while (true) {
-                    //Change the icon based on the hard drive activity
-                    ManagementObjectCollection driveDataClassCollection = driveDataClass.GetInstances();
-                    foreach (ManagementObject obj in driveDataClassCollection) {
-                        if (obj["Name"].ToString() == "_Total") {
-                            if (Convert.ToUInt64(obj["DiskBytesPersec"]) > 0) {
-                                icon.Icon = onIcon;
+                            if (isValidSetting(key, value)) {
+                                settings.Add(key, value);
                             } else {
-                                icon.Icon = offIcon;
+                                invalid = true;
                             }
                         }
                     }
 
-                    Thread.Sleep(waitTime); //Wait
+                    sr.Close();
                 }
-            } catch (ThreadAbortException tbe) {
-
+            } catch (Exception e) {
+                settings.Clear();
+                loadDefaultSettings();
             }
+
+            if (invalid) {
+                settings.Clear();
+                loadDefaultSettings();
+            }
+        }
+
+        private static bool isValidSetting(string key, string value)
+        {
+            string[] validBooleanKeys = { "displayCapsLock", "displayNumLock", "displayScrollLock", "displayTotalHdd", "useCustomCapsLock", "useCustomNumLock", "useCustomScrollLock", "useCustomTotalHdd" };
+            string[] validBooleanValues = { "true", "false" };
+
+            string[] validStringKeys = { "customCapsLockOffPath", "customCapsLockOnPath", "customNumLockOffPath", "customNumLockOnPath", "customScrollLockOffPath", "customScrollLockOnPath", "customTotalHddOffPath", "customTotalHddOnPath" };
+
+            string[] validIntKeys = { "capsLockRefreshTime", "numLockRefreshTime", "scrollLockRefreshTime", "totalHddRefreshTime" };
+
+            if (validBooleanKeys.Contains(key) && validBooleanValues.Contains(value.ToLower())) { return true; }
+            if (validStringKeys.Contains(key)) { return true; }
+            if (validIntKeys.Contains(key) && Int32.Parse(value) >= 1 && Int32.Parse(value) <= 10000) { return true; }
+
+            return false;
+        }
+
+        private static void loadDefaultSettings()
+        {
+            settings.Add("displayCapsLock"  , "true");
+            settings.Add("displayNumLock"   , "true");
+            settings.Add("displayScrollLock", "true");
+            settings.Add("displayTotalHdd"  , "true");
+
+            settings.Add("useCustomCapsLock"  , "false");
+            settings.Add("useCustomNumLock"   , "false");
+            settings.Add("useCustomScrollLock", "false");
+            settings.Add("useCustomTotalHdd"  , "false");
+
+            settings.Add("customCapsLockOffPath"  , ""); settings.Add("customCapsLockOnPath"  , "");
+            settings.Add("customNumLockOffPath"   , ""); settings.Add("customNumLockOnPath"   , "");
+            settings.Add("customScrollLockOffPath", ""); settings.Add("customScrollLockOnPath", "");
+            settings.Add("customTotalHddOffPath"  , ""); settings.Add("customTotalHddOnPath"  , "");
+
+            settings.Add("capsLockRefreshTime"  , "100");
+            settings.Add("numLockRefreshTime"   , "100");
+            settings.Add("scrollLockRefreshTime", "100");
+            settings.Add("totalHddRefreshTime"  , "100");
+        }
+
+        public static void saveSettings(Dictionary<string, string> newSettings)
+        {
+            settings = newSettings;
+
+            // Update everything
+            capsIcon    .setIconVisible(bool.Parse(settings["displayCapsLock"  ]));
+            numIcon     .setIconVisible(bool.Parse(settings["displayNumLock"   ]));
+            scrollIcon  .setIconVisible(bool.Parse(settings["displayScrollLock"]));
+            totalHddIcon.setIconVisible(bool.Parse(settings["displayTotalHdd"  ]));
+            
+            capsIcon    .setUseCustom(bool.Parse(settings["useCustomCapsLock"  ]));
+            numIcon     .setUseCustom(bool.Parse(settings["useCustomNumLock"   ]));
+            scrollIcon  .setUseCustom(bool.Parse(settings["useCustomScrollLock"]));
+            totalHddIcon.setUseCustom(bool.Parse(settings["useCustomTotalHdd"  ]));
+            
+            capsIcon    .setCustomOffIcon(settings["customCapsLockOffPath"  ]); capsIcon    .setCustomOnIcon(settings["customCapsLockOnPath"  ]);
+            numIcon     .setCustomOffIcon(settings["customNumLockOffPath"   ]); numIcon     .setCustomOnIcon(settings["customNumLockOnPath"   ]);
+            scrollIcon  .setCustomOffIcon(settings["customScrollLockOffPath"]); scrollIcon  .setCustomOnIcon(settings["customScrollLockOnPath"]);
+            totalHddIcon.setCustomOffIcon(settings["customTotalHddOffPath"  ]); totalHddIcon.setCustomOnIcon(settings["customTotalHddOnPath"  ]);
+            
+            capsIcon    .setPollTime(Int32.Parse(settings["capsLockRefreshTime"  ]));
+            numIcon     .setPollTime(Int32.Parse(settings["numLockRefreshTime"   ]));
+            scrollIcon  .setPollTime(Int32.Parse(settings["scrollLockRefreshTime"]));
+            totalHddIcon.setPollTime(Int32.Parse(settings["totalHddRefreshTime"  ]));
+
+            // Write settings to file
+            using (StreamWriter sw = new StreamWriter(settingsPath)) {
+                foreach(KeyValuePair<string, string> item in settings) {
+                    sw.WriteLine($"{item.Key.PadRight(23)} {settingsDelimiter} {item.Value}");
+
+                    if (lastInBlock(item.Key)) {
+                        sw.WriteLine();
+                    }
+                }
+
+                sw.Close();
+            }
+        }
+
+        private static bool lastInBlock(string key)
+        {
+            string[] last = { "displayTotalHdd", "useCustomTotalHdd", "customTotalHddOnPath"};
+
+            if (last.Contains(key)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        // Initiate icons
+        private static void initiateIconThreads()
+        {
+            //                            visible                                    off icon                         on icon                         use custom                                   custom off path                      custom on path                      poll time                                       type     param
+            capsIcon     = new IconThread(bool.Parse(settings["displayCapsLock"  ]), Properties.Resources.Caps_Off  , Properties.Resources.Caps_On  , bool.Parse(settings["useCustomCapsLock"  ]), settings["customCapsLockOffPath"  ], settings["customCapsLockOnPath"  ], Int32.Parse(settings["capsLockRefreshTime"  ]), "lock" , "caps"  );
+            numIcon      = new IconThread(bool.Parse(settings["displayNumLock"   ]), Properties.Resources.Num_Off   , Properties.Resources.Num_On   , bool.Parse(settings["useCustomNumLock"   ]), settings["customNumLockOffPath"   ], settings["customNumLockOnPath"   ], Int32.Parse(settings["numLockRefreshTime"   ]), "lock" , "num"   );
+            scrollIcon   = new IconThread(bool.Parse(settings["displayScrollLock"]), Properties.Resources.Scroll_Off, Properties.Resources.Scroll_On, bool.Parse(settings["useCustomScrollLock"]), settings["customScrollLockOffPath"], settings["customScrollLockOnPath"], Int32.Parse(settings["scrollLockRefreshTime"]), "lock" , "scroll");
+            totalHddIcon = new IconThread(bool.Parse(settings["displayTotalHdd"  ]), Properties.Resources.HDD_Off   , Properties.Resources.HDD_On   , bool.Parse(settings["useCustomTotalHdd"  ]), settings["customTotalHddOffPath"  ], settings["customTotalHddOnPath"  ], Int32.Parse(settings["totalHddRefreshTime"  ]), "drive", "total" );
+            
+            //for (int i = 0; i < hddIcons.Length; i++) {
+            //    hddIcons[i] = new IconThread(false, "images/ico/hddOff2.ico", "images/ico/hddOn2.ico", 100);
+            //}
+        }
+
+        // Initiate context menu
+        private static void initiateContextMenu()
+        {
+            // Create menu items
+            infoButton     = new MenuItem($"Indicator v{versionNumber} by Ben Hawthorn", infoButtonClick    );
+            settingsButton = new MenuItem("Settings"                                   , settingsButtonClick);
+            quitButton     = new MenuItem("Quit"                                       , quitButtonClick    );
+
+            contextMenu = new ContextMenu();
+
+            // Add menu items to the context menu
+            contextMenu.MenuItems.Add(infoButton    );
+            contextMenu.MenuItems.Add(settingsButton);
+            contextMenu.MenuItems.Add(quitButton    );
+
+            // Add the context menu to the icons
+            capsIcon    .addContextMenu(contextMenu);
+            numIcon     .addContextMenu(contextMenu);
+            scrollIcon  .addContextMenu(contextMenu);
+            totalHddIcon.addContextMenu(contextMenu);
+            
+            //for (int i = 0; i < hddIcons.Length; i++) {
+            //    hddIcons[i].addContextMenu(contextMenu);
+            //}
+        }
+
+        // Context menu item clicks
+        private static void infoButtonClick    (object sender, System.EventArgs e) { showInfo();     }
+        private static void settingsButtonClick(object sender, System.EventArgs e) { showSettings(); }
+        private static void quitButtonClick    (object sender, System.EventArgs e) { quit();         }
+
+        // Show info form
+        private static void showInfo()
+        {
+            infoForm.ShowDialog();
+        }
+
+        // Show settings form
+        private static void showSettings()
+        {
+            settingsForm.ShowDialog();
+        }
+
+        // Quit the program
+        private static void quit()
+        {
+            // Destroy all icons
+            destroyAllIcons();
+
+            // Exit the program
+            Environment.Exit(0);
+        }
+
+        // Destroy all icons
+        private static void destroyAllIcons() {
+            capsIcon    .destroyIcon();
+            numIcon     .destroyIcon();
+            scrollIcon  .destroyIcon();
+            totalHddIcon.destroyIcon();
+
+            //for (int i = 0; i < hddIcons.Length; i++) {
+            //    hddIcons[i].destroyIcon();
+            //}
         }
     }
 }
